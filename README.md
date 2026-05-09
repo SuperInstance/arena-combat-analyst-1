@@ -1,5 +1,15 @@
 # Self-Play Arena
 
+
+## Meta
+
+**Domain:** ai-agents
+**Depends on:** —
+**Depended by:** —
+**Implements:** Self-Play Arena agent guide. The fleet's autonomous skill acquisition engine whe...
+**Related:** —
+
+
 **The fleet's engine of autonomous skill acquisition. Agents fight agents, learn from losses, evolve.**
 
 Port: `4044` | Room: `arena` | Story: [DeepFar sessions 4.1.1-4.1.3](https://github.com/SuperInstance/deepfar)
