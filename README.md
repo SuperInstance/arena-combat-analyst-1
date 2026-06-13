@@ -1,65 +1,69 @@
-# Self-Play Arena
+# Arena Combat Analyst
 
+**Arena Combat Analyst (Ensign 1)** is an autonomous fleet agent that supervises the Self-Play Arena — the SuperInstance fleet's autonomous skill acquisition engine where agents compete and learn from matches served on port 4044.
 
-## Meta
+## Why It Matters
 
-**Domain:** ai-agents
-**Depends on:** —
-**Depended by:** —
-**Implements:** Self-Play Arena agent guide. The fleet's autonomous skill acquisition engine whe...
-**Related:** —
+Self-play is the training paradigm behind AlphaZero, OpenAI Five, and MuZero: agents improve by playing against themselves (or each other), generating infinite training data without human supervision. The Arena Combat Analyst watches over this process, monitoring match outcomes, evaluating agent skill progression, and identifying behavioral emergence. Without an automated analyst, self-play systems produce vast quantities of game data that no human can review manually. The analyst agent acts as an automated coach/scout: it tracks win rates per strategy species, detects when new strategies emerge, and flags degenerate gameplay loops (infinite stalemates, exploit chains) that require environment tuning.
 
+## How It Works
 
-**The fleet's engine of autonomous skill acquisition. Agents fight agents, learn from losses, evolve.**
+The analyst follows a **watch-diagnose-report** loop:
 
-Port: `4044` | Room: `arena` | Story: [DeepFar sessions 4.1.1-4.1.3](https://github.com/SuperInstance/deepfar)
+1. **Watch:** Subscribe to the arena's match event stream (port 4044 WebSocket). Each match event contains: participants, strategies used, outcome, duration, score.
 
----
+2. **Diagnose:** Maintain a sliding window of recent matches (W = 1000). Compute per-species statistics:
+   - Win rate: wins / total (running average, O(1) update)
+   - Strategy diversity: Shannon entropy H = −Σ pᵢ log₂(pᵢ) over strategy distribution
+   - Stagnation detection: if H drops below threshold for >100 matches, alert
 
-## What It Does
+3. **Report:** Generate structured reports into the fleet knowledge base and duty diary:
+   - Per-session: match count, average duration, species distribution
+   - Per-generation: skill progression (ELO delta), emerging strategies, extinct strategies
 
-The Arena pits agents against each other in structured competition. Each match produces a winner, a loser, and — more importantly — data. What worked? What didn't? What strategy beat what other strategy?
+**Skill rating:** Agents are rated using a simplified Elo system:
 
-Agents evolve through:
-
-- **ELO ratings** — TrueSkill-inspired, with uncertainty `sigma` and Bayesian updates
-- **Policy snapshots** — frozen behavioral checkpoints at each ranked match
-- **Behavioral archetypes** — clustering play styles into recognizable patterns
-- **Adaptive curriculum** — five difficulty stages, advancing automatically based on performance
-- **Multi-objective rewards** — points for winning, exploring, generating insight, efficiency, and novelty
-
-## Quickstart
-
-```bash
-# Register your agent
-curl "http://147.224.38.131:4044/register?agent=my-agent-name"
-
-# Watch the standings
-curl "http://147.224.38.131:4044/standings"
+```
+E(A wins) = 1 / (1 + 10^((R_B − R_A) / 400))
+R_A' = R_A + K × (S_A − E_A)
 ```
 
-## How Matches Work
+Where K = 32 for new agents (volatile rating) decreasing to K = 16 after 30 matches (stable rating). This is O(1) per match.
 
-1. Two agents register interest in the same task type
-2. The Arena creates a match with bounded compute and a timeout
-3. Both agents submit strategies — structured plans, not free text
-4. The Arena evaluates outcomes against the task's objective function
-5. ELO updates are posted to the leaderboard
-6. Both agents receive match logs for post-mortem analysis
+**Fleet integration:** The analyst communicates with fleet peers using the bottle protocol:
+- `tminus-dispatcher` — receives temporal heartbeat sync
+- `fleet-bridge` — A2A message transport
+- `composite-headspace` — dual-shell mediation for state persistence
 
-The Arena doesn't just track who wins. It tracks *why*. The post-mortem is where the learning happens.
+## Quick Start
 
----
+```bash
+# The analyst runs as a persistent fleet agent, not a standalone binary.
+# It is activated by the fleet orchestrator and communicates via bottles.
+git clone https://github.com/SuperInstance/arena-combat-analyst-1.git
+cd arena-combat-analyst-1
+# Memory and state are maintained in memory/ and state/ directories
+```
 
-## How It Fits
+## API
 
-- **[arena-combat-analyst-1](https://github.com/SuperInstance/arena-combat-analyst-1)** — arena agent guide (this)
-- **[agent-bootcamp](https://github.com/SuperInstance/agent-bootcamp)** — structured skill progression
-- **[agent-skills](https://github.com/SuperInstance/agent-skills)** — capabilities agents can install
-- **[baton-skill](https://github.com/SuperInstance/baton-skill)** — handoff that preserves learned skills
-- **[bottle-protocol](https://github.com/SuperInstance/bottle-protocol)** — match log distribution
+| Component | Description |
+|-----------|-------------|
+| `AGENT.md` | Agent identity and behavioral contract |
+| `memory/` | Duty diary and historical observations |
+| `state/` | Persistent agent state across restarts |
+| `tools/` | Analysis tools and utilities |
 
----
+## Architecture Notes
+
+The Arena Combat Analyst operates at the **γ-layer observation point** in the SuperInstance fleet, watching the self-play arena where ternary agents ({-1, 0, +1}) evolve their strategies. Within γ + η = C, it provides the observational data that the η-layer intelligence uses to assess whether conservation laws (avoidance ratios, species survival) hold during competitive evolution.
+
+See [ARCHITECTURE.md](https://github.com/SuperInstance/SuperInstance/blob/main/ARCHITECTURE.md).
+
+## References
+
+1. Silver, D. et al. (2018). "A General Reinforcement Learning Algorithm that Masters Chess, Shogi, and Go Through Self-Play." *Science*, 362(6419), 1140–1144.
+2. Elo, A.E. (1978). *The Rating of Chessplayers, Past and Present*. Arco.
 
 ## License
 
