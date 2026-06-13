@@ -60,6 +60,10 @@ The Arena Combat Analyst operates at the **γ-layer observation point** in the S
 
 See [ARCHITECTURE.md](https://github.com/SuperInstance/SuperInstance/blob/main/ARCHITECTURE.md).
 
+**Emergence detection:** New strategies are detected by monitoring the distribution of agent action sequences. When a previously unseen sequence pattern exceeds a frequency threshold (typically 5% of the population), it is classified as an emerging strategy. The analyst compares its genome against known strategy species using k-nearest-neighbor (k=5) on the trit genome space. If no known species is within Hamming distance d < 3, a new species is declared.
+
+**Degenerate gameplay detection:** The analyst monitors for pathological patterns: infinite stalemates (matches exceeding 10× median duration), exploit chains (same move sequence repeating >15 times), and population collapse (species count dropping below 3). Each triggers an environment tuning recommendation.
+
 ## References
 
 1. Silver, D. et al. (2018). "A General Reinforcement Learning Algorithm that Masters Chess, Shogi, and Go Through Self-Play." *Science*, 362(6419), 1140–1144.
